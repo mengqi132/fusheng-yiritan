@@ -599,10 +599,46 @@ body {
 
 /* ---------- 手机端 ---------- */
 @media (max-width: 720px) {
+  #app { padding: 16px 12px 180px; gap: 12px; }
+
   #panels { grid-template-columns: 1fr; }
+  .panel { padding: 14px; min-height: 0; }
   .asset-value { font-size: 22px; }
-  #actions { flex-wrap: wrap; gap: 8px; }
-  .btn { padding: 10px 18px; font-size: 14px; }
-  .modal { padding: 26px 22px; }
+  .day-info { font-size: 18px; }
+
+  /* 资金胶囊更紧凑 */
+  #cashbar { gap: 6px; }
+  .pill { font-size: 12px; padding: 5px 10px; }
+
+  /* 商品行：两行布局，第一行信息、第二行按钮，杜绝竖排文字 */
+  .row { flex-wrap: wrap; row-gap: 8px; padding: 10px; }
+  .row .g-icon { width: 30px; height: 30px; font-size: 17px; }
+  .row .g-name { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .g-name .sub { white-space: normal; }
+  .spark { display: none; }  /* 手机端用下方大图看走势 */
+  .row .g-price { min-width: 0; font-size: 14px; }
+  .row .g-change { min-width: 0; font-size: 11px; }
+  .row .ops { flex-basis: 100%; display: flex; gap: 8px; }
+  .row .ops .btn-mini { flex: 1; padding: 9px 10px; font-size: 13px; }
+
+  /* 快讯条避开底部操作栏 */
+  #news-bar { font-size: 12.5px; padding: 11px 13px; margin-bottom: 6px; }
+
+  /* 底部操作栏：功能键一排、收摊独占一排 */
+  #actions {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  #actions .btn-ghost { flex: 1 1 0; padding: 10px 4px; font-size: 13px; }
+  #actions .btn-icon { flex: 0 0 46px; }
+  #btn-next-day { flex: 1 1 100%; padding: 14px; font-size: 16px; }
+
+  /* 走势图更紧凑，标签可横向滑动 */
+  #price-chart { height: 180px; }
+  #chart-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+  .chip { flex-shrink: 0; }
+
+  .modal { padding: 24px 20px; }
   #float-layer { right: 6%; }
 }
