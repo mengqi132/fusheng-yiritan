@@ -27,11 +27,15 @@ Grow your total assets to **¥50,000+** within 15 days to pay off the debt. The 
 
 - **📈 Market**: 8 goods in 3 price tiers with different volatility. Click "Buy 1 / Buy 10" to stock up — watch your cash and bag capacity
 - **🎒 Bag**: Shows average cost and unrealized profit/loss for each holding. Click "Sell 1 / Sell All" to cash out (red = up, green = down)
+- **📊 Price Charts**: Every good has an inline sparkline, and a full chart below lets you switch goods and hover over any day for its exact change — review the market like a trader
+- **🔥 Market Heat**: Each good carries a 0–100 heat badge. Heat genuinely biases tomorrow's price movement — but beware of a cooldown after it maxes out (95+)
+- **📻 Night-Market News**: A free forecast is broadcast after every close (price trends or event hints), deliberately vague but 75% accurate — learn to read between the lines
+- **📰 Intel Agency**: Pay for certainty about tomorrow — Street Rumor (¥300, 50% reliable) / Wholesale Insider (¥1,000, 70%) / Core Tip-off (¥3,000, 90%). One purchase per day; truth revealed the next evening
 - **🌙 Close Stall**: End the day; prices fluctuate overnight
 - **🏦 Bank**: Deposits are safe from thieves and fines (but earn no interest)
 - **💸 Loan**: Borrow from "Lao Wang" at 5% daily compound interest — leverage for pros, a trap for rookies
 - **🎒 Expand**: Pay to enlarge your bag (20 → 40 → 70 → 100 slots)
-- **🎲 Random Events**: Inspectors' fines, pickpockets, influencer shout-outs, midnight wholesale deals, an insider tip seller... 35% chance per day, and some events ask you to make a choice
+- **🎲 Random Events**: Inspectors' fines, pickpockets, influencer shout-outs, midnight wholesale deals, an insider tip seller... 55% chance per day, no repeats within two days, and some events ask you to make a choice
 - **🏅 Achievements**: 9 hidden achievements to unlock
 - **💾 Auto-save**: Progress is stored in your browser — close anytime, resume anytime
 
@@ -51,11 +55,12 @@ Pure front-end. No frameworks, no dependencies, no build step:
 ├── css/style.css     # Dark terminal-style theme (red up / green down)
 ├── js/
 │   ├── main.js         # Game state and main loop
-│   ├── market.js       # Goods definitions and price algorithm
+│   ├── market.js       # Goods, price algorithm and heat dynamics
 │   ├── events.js       # Random event library
+│   ├── intel.js        # Intel agency and night-market news
 │   ├── achievements.js # Achievement system
 │   ├── audio.js        # Web Audio synthesized SFX
-│   └── ui.js           # Rendering and animations
+│   └── ui.js           # Rendering, price charts and animations
 ├── server.js         # Optional local preview server
 └── package.json
 ```
