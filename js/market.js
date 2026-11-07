@@ -21,25 +21,39 @@ export function initPrices() {
   return prices;
 }
 
+// 开局热度：40~60 之间
+export function initHeats() {
+  const heats = {};
+  for (const g of GOODS) {
+    heats[g.id] = 40 + Math.round(Math.random() * 20);
+  }
+  return heats;
+}
+
 function jitter(value, vol) {
   const r = 1 + (Math.random() * 2 - 1) * vol;
   return Math.max(1, Math.round(value * r));
 }
 
-// 次日价格：随机波动 + 均值回归 + 小概率暴涨暴跌 + 连跌保护
-// 返回 { prices, changes, news, streaks }
-export function nextDayPrices(prev, streaks = {}) {
+// 次日价格：随机波动 + 热度偏置 + 均值回归 + 小概率暴涨暴跌 + 连跌保护
+// 热度（0~100）：越高越容易涨，是玩家可观察的"趋势指标"
+// 返回 { prices, changes, news, streaks, heats }
+export function nextDayPrices(prev, streaks = {}, heats = {}) {
   const prices = {};
   const changes = {};
   const outNews = [];
   const newStreaks = {};
+  const newHeats = {};
 
   for (const g of GOODS) {
     const old = prev[g.id];
+    const heat = heats[g.id] ?? 50;
 
     // 均值回归：偏离基准价越多，回拉越强
     const pull = ((g.base - old) / g.base) * 0.09;
-    let change = (Math.random() * 2 - 1) * g.vol + pull;
+    // 热度偏置：热度 50 为中性，越高越容易涨、越低越容易跌
+    const heatBias = ((heat - 50) / 50) * g.vol * 0.35;
+    let change = (Math.random() * 2 - 1) * g.vol + pull + heatBias;
 
     // 3.5% 概率暴涨，3.5% 概率暴跌（幅度收敛），并生成快讯
     const roll = Math.random();
@@ -63,7 +77,12 @@ export function nextDayPrices(prev, streaks = {}) {
     prices[g.id] = price;
     changes[g.id] = (price - old) / old;
     newStreaks[g.id] = changes[g.id] < -0.02 ? (streaks[g.id] || 0) + 1 : 0;
+
+    // 热度演化：跟涨跟跌 + 噪声 + 向 50 缓慢回归
+    newHeats[g.id] = Math.max(0, Math.min(100, Math.round(
+      heat + changes[g.id] * 120 + (Math.random() * 16 - 8) + (50 - heat) * 0.08
+    )));
   }
 
-  return { prices, changes, news: outNews, streaks: newStreaks };
+  return { prices, changes, news: outNews, streaks: newStreaks, heats: newHeats };
 }

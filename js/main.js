@@ -1,6 +1,7 @@
 // ========== 主入口：游戏状态与流程 v3 ==========
-import { GOODS, initPrices, nextDayPrices } from './market.js';
+import { GOODS, initPrices, initHeats, nextDayPrices } from './market.js';
 import { maybeTriggerEvent } from './events.js';
+import { INTEL_TIERS, buyIntel, rollForecast } from './intel.js';
 import { createTracker } from './achievements.js';
 import { sfx, toggleMute, isMuted } from './audio.js';
 import {
@@ -46,6 +47,10 @@ function newGame() {
     streaks: {},        // 各商品连跌天数（连跌保护用）
     recentEvents: [],   // 最近触发的事件 id（防重复）
     history: {},        // 各商品每日价格历史（走势图用）
+    heats: initHeats(), // 各商品市场热度 0~100
+    intel: null,        // 已购买的付费情报
+    intelDay: 0,        // 买情报那天（每天限购一次）
+    forecast: rollForecast(), // 夜市新闻联播：明日预告
     flash: null,
     over: false,
   };
@@ -132,13 +137,14 @@ function nextDay() {
   }
 
   const prev = { ...state.prices };
-  const { prices, changes, news, streaks } = nextDayPrices(state.prices, state.streaks);
+  const { prices, changes, news, streaks, heats } = nextDayPrices(state.prices, state.streaks, state.heats);
   state.prices = prices;
   state.changes = changes;
   state.streaks = streaks;
+  state.heats = heats;
   const parts = news.map((n) => n.text);
 
-  // 内幕消息应验
+  // 内幕消息应验（神秘人事件）
   if (state.tip) {
     const g = GOODS.find((x) => x.id === state.tip.id);
     state.prices[g.id] = Math.round(state.prices[g.id] * (1.6 + Math.random() * 0.6));
@@ -147,6 +153,36 @@ function nextDay() {
     state.tip = null;
     tracker.onTipPaid();
   }
+
+  // 付费情报应验
+  if (state.intel) {
+    const it = state.intel;
+    const g = GOODS.find((x) => x.id === it.id);
+    if (it.real) {
+      state.prices[it.id] = Math.max(1, Math.round(state.prices[it.id] * (1 + it.dir * it.mag)));
+      state.changes[it.id] = (state.prices[it.id] - prev[it.id]) / prev[it.id];
+      parts.push(`📰 你买的情报应验了！${g.icon}${g.name} 如预期大${it.dir > 0 ? '涨' : '跌'}！`);
+    } else {
+      parts.push(`📰 昨天买的情报没有应验……看来是条假消息，花钱买了个教训。`);
+    }
+    state.intel = null;
+  }
+
+  // 昨日新闻联播预告应验（75% 概率）
+  if (state.forecast && Math.random() < 0.75) {
+    const f = state.forecast;
+    if (f.type === 'price') {
+      const mag = 0.25 + Math.random() * 0.35;
+      state.prices[f.id] = Math.max(1, Math.round(state.prices[f.id] * (1 + f.dir * mag)));
+      state.changes[f.id] = (state.prices[f.id] - prev[f.id]) / prev[f.id];
+    } else {
+      state.forceEvent = f.evId;
+    }
+  }
+
+  // 播报新一天的预告
+  state.forecast = rollForecast();
+  parts.push(state.forecast.text);
 
   // 单日资产增长成就
   const gain = totalAssets(state) - dayStartAssets;
@@ -298,6 +334,35 @@ function openExpand() {
   });
 }
 
+// ---------- 付费情报 ----------
+function openIntel() {
+  const boughtToday = state.intelDay === state.day || state.intel !== null;
+  openModal({
+    icon: '📰',
+    title: '情报站',
+    desc: `夜市里有的是消息灵通的人——只要你出得起价。买到的情报明天收摊后揭晓真伪。<br>
+      <span class="balance-line">现金 ${fmt(state.cash)}${state.intel ? ' · 已持有一条情报' : ''}</span>`,
+    options: [
+      ...INTEL_TIERS.map((t) => ({
+        label: `${t.icon} ${t.name}　<span style="color:var(--gold);font-family:var(--mono)">${fmt(t.cost)}</span>`,
+        sub: t.desc,
+        disabled: state.cash < t.cost || boughtToday,
+        onPick: () => {
+          state.cash -= t.cost;
+          const { intel, text } = buyIntel(t);
+          state.intel = intel;
+          state.intelDay = state.day;
+          sfx.buy();
+          spawnFloat(`−${fmt(t.cost)}`, 'cost');
+          showNews(text);
+          refresh();
+        },
+      })),
+      { label: '🚪 返回', sub: boughtToday ? '今天已买过情报，明天再来' : '今天先不买', onPick: () => {} },
+    ],
+  });
+}
+
 // ---------- 结算 ----------
 function settle() {
   state.over = true;
@@ -356,7 +421,7 @@ function restart() {
   state = newGame();
   tracker = createTracker();
   dayStartAssets = START_CASH;
-  showNews('新的一局开始了。带着 5,000 元本金，15 天内赚到 50,000 元！');
+  showNews(`新的一局开始了。带着 5,000 元本金，15 天内赚到 50,000 元！${state.forecast.text}`);
   refresh();
 }
 
@@ -373,6 +438,7 @@ document.querySelector('#btn-next-day').addEventListener('click', nextDay);
 document.querySelector('#btn-bank').addEventListener('click', () => { if (!state.over && !isModalOpen()) openBank(); });
 document.querySelector('#btn-loan').addEventListener('click', () => { if (!state.over && !isModalOpen()) openLoan(); });
 document.querySelector('#btn-expand').addEventListener('click', () => { if (!state.over && !isModalOpen()) openExpand(); });
+document.querySelector('#btn-intel').addEventListener('click', () => { if (!state.over && !isModalOpen()) openIntel(); });
 document.querySelector('#btn-mute').addEventListener('click', () => updateMuteBtn(toggleMute()));
 document.querySelector('#btn-restart').addEventListener('click', restart);
 
@@ -405,10 +471,15 @@ function boot() {
     btn.textContent = `💾 继续摆摊（第 ${savedData.state.day} 天）`;
     btn.addEventListener('click', () => {
       state = savedData.state;
+      // 旧版本存档兼容：补齐新增字段
+      if (!state.heats) state.heats = initHeats();
+      if (!state.forecast) state.forecast = rollForecast();
+      if (state.intel === undefined) state.intel = null;
+      if (!state.intelDay) state.intelDay = 0;
       tracker = createTracker(savedData.ach);
       dayStartAssets = savedData.dayStartAssets ?? totalAssets(state);
       hideLanding();
-      showNews(`欢迎回来！第 ${state.day} 天，继续你的摆摊生涯。`);
+      showNews(`欢迎回来！第 ${state.day} 天，继续你的摆摊生涯。${state.forecast.text}`);
       refresh();
     });
   }
@@ -419,7 +490,7 @@ function boot() {
     tracker = createTracker();
     dayStartAssets = START_CASH;
     hideLanding();
-    showNews('你带着 5,000 元本金来到夜市，15 天内要赚到 50,000 元还债。低买高卖，祝你好运。');
+    showNews(`你带着 5,000 元本金来到夜市，15 天内要赚到 50,000 元还债。低买高卖，祝你好运。${state.forecast.text}`);
     sfx.day();
     refresh();
   });

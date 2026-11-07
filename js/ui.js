@@ -75,6 +75,12 @@ function renderMarket(state) {
     const cls = chg > 0.001 ? 'up' : chg < -0.001 ? 'down' : 'flat';
     const arrow = chg > 0.001 ? '▲' : chg < -0.001 ? '▼' : '·';
 
+    // 热度徽章
+    const heat = state.heats?.[g.id] ?? 50;
+    const heatCls = heat < 35 ? 'heat-cool' : heat < 60 ? 'heat-mild' : heat < 85 ? 'heat-warm' : heat < 95 ? 'heat-hot' : 'heat-max';
+    const heatChip = `<span class="g-heat ${heatCls}" style="--heat:${heat}%" ` +
+      `title="市场热度 ${heat}/100 · 热度越高明天越容易涨，爆表后小心见顶">🔥${heat}</span>`;
+
     const row = document.createElement('div');
     row.className = 'row' + (state.flash && state.flash[g.id] ? ' ' + state.flash[g.id] : '');
     row.innerHTML = `
@@ -83,6 +89,7 @@ function renderMarket(state) {
       ${sparklineSVG(state.history?.[g.id], cls)}
       <span class="g-price">${fmt(price)}</span>
       <span class="g-change ${cls}">${arrow} ${Math.abs(chgPct)}%</span>
+      ${heatChip}
       <span class="ops">
         <button class="btn-mini" data-act="buy" data-id="${g.id}" data-n="1"
           ${canBuy(state, g.id, 1) ? '' : 'disabled'}>买1</button>

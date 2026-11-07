@@ -544,6 +544,58 @@ body {
 /* 商品行内迷你走势线 */
 .spark { width: 56px; height: 20px; flex-shrink: 0; opacity: 0.9; }
 
+/* ---------- 热度徽章 ---------- */
+.g-heat {
+  font-family: var(--mono);
+  font-size: 11px;
+  min-width: 56px;
+  text-align: center;
+  padding: 3px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: linear-gradient(90deg, rgba(255, 122, 69, 0.25) var(--heat, 50%), rgba(255, 255, 255, 0.03) var(--heat, 50%));
+  cursor: help;
+  flex-shrink: 0;
+}
+.g-heat.heat-cool { color: #8FB0FF; }
+.g-heat.heat-mild { color: var(--text-0); }
+.g-heat.heat-warm { color: var(--gold); }
+.g-heat.heat-hot { color: #FF7A45; }
+.g-heat.heat-max {
+  color: var(--up);
+  border-color: rgba(255, 90, 90, 0.5);
+  animation: pulse 1.6s infinite;
+}
+
+/* ---------- 情报弹窗档位卡片 ---------- */
+.intel-tier {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 13px 16px;
+  color: var(--text-0);
+  font-size: 14.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--sans);
+  width: 100%;
+}
+.intel-tier:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(110, 143, 251, 0.14);
+  transform: translateX(3px);
+}
+.intel-tier:disabled { opacity: 0.35; cursor: not-allowed; }
+.intel-tier .t-icon { font-size: 24px; }
+.intel-tier .t-body { flex: 1; }
+.intel-tier .t-name { font-weight: 600; }
+.intel-tier .t-desc { display: block; color: var(--text-1); font-size: 12px; margin-top: 3px; }
+.intel-tier .t-cost { font-family: var(--mono); color: var(--gold); font-weight: 700; font-size: 14px; }
+
 /* ---------- 成就提示 toast ---------- */
 #toast-layer {
   position: fixed;

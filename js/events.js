@@ -193,7 +193,15 @@ function bagCount(state) {
 
 // 每天收摊后调用：55% 概率触发一个满足条件的事件
 // 同一事件 2 天内不会重复出现，保证事件多样性
+// 若 state.forceEvent 存在（新闻联播预告的事件），优先应验
 export function maybeTriggerEvent(state) {
+  if (state.forceEvent) {
+    const forced = EVENTS.find((e) => e.id === state.forceEvent);
+    state.forceEvent = null;
+    if (forced && (!forced.cond || forced.cond(state))) {
+      return forced.kind === 'choice' ? { ...forced, data: forced.build(state) } : forced;
+    }
+  }
   if (Math.random() > 0.55) return null;
   const recent = state.recentEvents || [];
   let pool = EVENTS.filter((e) => !recent.includes(e.id) && (!e.cond || e.cond(state)));
