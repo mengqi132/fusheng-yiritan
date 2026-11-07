@@ -26,34 +26,44 @@ function jitter(value, vol) {
   return Math.max(1, Math.round(value * r));
 }
 
-// 次日价格：随机波动 + 均值回归 + 小概率暴涨暴跌
-// 返回 { prices, changes, news }
-export function nextDayPrices(prev) {
+// 次日价格：随机波动 + 均值回归 + 小概率暴涨暴跌 + 连跌保护
+// 返回 { prices, changes, news, streaks }
+export function nextDayPrices(prev, streaks = {}) {
   const prices = {};
   const changes = {};
-  const news = [];
+  const outNews = [];
+  const newStreaks = {};
 
   for (const g of GOODS) {
     const old = prev[g.id];
 
     // 均值回归：偏离基准价越多，回拉越强
-    const pull = ((g.base - old) / g.base) * 0.06;
+    const pull = ((g.base - old) / g.base) * 0.09;
     let change = (Math.random() * 2 - 1) * g.vol + pull;
 
-    // 5% 概率暴涨，5% 概率暴跌，并生成快讯
+    // 3.5% 概率暴涨，3.5% 概率暴跌（幅度收敛），并生成快讯
     const roll = Math.random();
-    if (roll < 0.05) {
+    if (roll < 0.035) {
       change += 0.8 + Math.random() * 0.8;
-      news.push({ icon: '📈', text: `${g.icon} ${g.name} 突然爆火，行情一夜飙升！` });
-    } else if (roll > 0.95) {
-      change -= 0.5 + Math.random() * 0.3;
-      news.push({ icon: '📉', text: `${g.icon} ${g.name} 无人问津，行情大幅跳水。` });
+      outNews.push({ icon: '📈', text: `${g.icon} ${g.name} 突然爆火，行情一夜飙升！` });
+    } else if (roll > 0.965) {
+      change -= 0.35 + Math.random() * 0.25;
+      outNews.push({ icon: '📉', text: `${g.icon} ${g.name} 无人问津，行情大幅跳水。` });
     }
 
-    const price = Math.max(1, Math.round(old * (1 + change)));
+    // 连跌保护：连跌 2 天后，第 3 天保底反弹，不再阴跌
+    const underProtection = (streaks[g.id] || 0) >= 2;
+    if (underProtection) {
+      change = Math.abs(change) * 0.5 + g.vol * 0.45;
+    }
+
+    let price = Math.max(1, Math.round(old * (1 + change)));
+    // 保底价（¥1）附近四舍五入会吃掉涨幅，保护期强制至少 +1
+    if (underProtection && price <= old) price = old + 1;
     prices[g.id] = price;
     changes[g.id] = (price - old) / old;
+    newStreaks[g.id] = changes[g.id] < -0.02 ? (streaks[g.id] || 0) + 1 : 0;
   }
 
-  return { prices, changes, news };
+  return { prices, changes, news: outNews, streaks: newStreaks };
 }

@@ -13,6 +13,7 @@ const heldIds = (state) => Object.keys(state.bag).filter((id) => state.bag[id].c
 const EVENTS = [
   // ===== 被动事件 =====
   {
+    id: 'chengguan',
     kind: 'passive',
     cond: (s) => s.cash > 200,
     run(state) {
@@ -22,6 +23,7 @@ const EVENTS = [
     },
   },
   {
+    id: 'thief',
     kind: 'passive',
     cond: (s) => s.cash > 500,
     run(state) {
@@ -31,6 +33,7 @@ const EVENTS = [
     },
   },
   {
+    id: 'card',
     kind: 'passive',
     run(state) {
       const gain = randInt(300, 800);
@@ -39,6 +42,7 @@ const EVENTS = [
     },
   },
   {
+    id: 'fellow',
     kind: 'passive',
     run(state) {
       state.cash += 1000;
@@ -46,6 +50,7 @@ const EVENTS = [
     },
   },
   {
+    id: 'influencer',
     kind: 'passive',
     run(state) {
       const g = pick(GOODS);
@@ -54,6 +59,7 @@ const EVENTS = [
     },
   },
   {
+    id: 'clearance',
     kind: 'passive',
     run(state) {
       const g = pick(GOODS);
@@ -62,6 +68,7 @@ const EVENTS = [
     },
   },
   {
+    id: 'rain',
     kind: 'passive',
     run(state) {
       const g = pick(GOODS);
@@ -72,6 +79,7 @@ const EVENTS = [
 
   // ===== 抉择事件 =====
   {
+    id: 'insider',
     kind: 'choice',
     build() {
       return {
@@ -106,6 +114,7 @@ const EVENTS = [
     },
   },
   {
+    id: 'drunk',
     kind: 'choice',
     cond: (s) => heldIds(s).length > 0,
     build(state) {
@@ -139,6 +148,7 @@ const EVENTS = [
     },
   },
   {
+    id: 'wholesale',
     kind: 'choice',
     build(state) {
       const g = pick(GOODS);
@@ -181,10 +191,15 @@ function bagCount(state) {
   return n;
 }
 
-// 每天收摊后调用：35% 概率触发一个满足条件的事件
+// 每天收摊后调用：55% 概率触发一个满足条件的事件
+// 同一事件 2 天内不会重复出现，保证事件多样性
 export function maybeTriggerEvent(state) {
-  if (Math.random() > 0.35) return null;
-  const pool = EVENTS.filter((e) => !e.cond || e.cond(state));
+  if (Math.random() > 0.55) return null;
+  const recent = state.recentEvents || [];
+  let pool = EVENTS.filter((e) => !recent.includes(e.id) && (!e.cond || e.cond(state)));
+  if (pool.length === 0) {
+    pool = EVENTS.filter((e) => !e.cond || e.cond(state));
+  }
   if (pool.length === 0) return null;
   const ev = pick(pool);
   return ev.kind === 'choice' ? { ...ev, data: ev.build(state) } : ev;

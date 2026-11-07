@@ -43,6 +43,8 @@ function newGame() {
     changes,
     bag: {},
     tip: null,
+    streaks: {},        // 各商品连跌天数（连跌保护用）
+    recentEvents: [],   // 最近触发的事件 id（防重复）
     flash: null,
     over: false,
   };
@@ -129,9 +131,10 @@ function nextDay() {
   }
 
   const prev = { ...state.prices };
-  const { prices, changes, news } = nextDayPrices(state.prices);
+  const { prices, changes, news, streaks } = nextDayPrices(state.prices, state.streaks);
   state.prices = prices;
   state.changes = changes;
+  state.streaks = streaks;
   const parts = news.map((n) => n.text);
 
   // 内幕消息应验
@@ -156,26 +159,30 @@ function nextDay() {
     showNews(parts.join(' '));
     sfx.day();
     refresh();
-  } else if (ev.kind === 'passive') {
-    parts.push(ev.run(state));
-    showNews(parts.join(' '));
-    sfx.event();
-    refresh();
   } else {
-    showNews(parts.join(' '));
-    sfx.event();
-    refresh();
-    openChoiceModal(ev.data, (resultText) => {
-      // 神秘人事件结果：被骗 or 拿到真消息
-      if (state.scammed) {
-        tracker.onTipBought(false);
-        delete state.scammed;
-      } else if (state.tip) {
-        tracker.onTipBought(true);
-      }
-      showNews(parts.concat([resultText]).join(' '));
+    // 记录事件，2 天内不重复
+    state.recentEvents = (state.recentEvents || []).concat(ev.id).slice(-2);
+    if (ev.kind === 'passive') {
+      parts.push(ev.run(state));
+      showNews(parts.join(' '));
+      sfx.event();
       refresh();
-    });
+    } else {
+      showNews(parts.join(' '));
+      sfx.event();
+      refresh();
+      openChoiceModal(ev.data, (resultText) => {
+        // 神秘人事件结果：被骗 or 拿到真消息
+        if (state.scammed) {
+          tracker.onTipBought(false);
+          delete state.scammed;
+        } else if (state.tip) {
+          tracker.onTipBought(true);
+        }
+        showNews(parts.concat([resultText]).join(' '));
+        refresh();
+      });
+    }
   }
 }
 
@@ -206,6 +213,7 @@ function openBank() {
       { label: '全部存入', sub: fmt(state.cash), disabled: state.cash <= 0, act: () => bankOp(state.cash, 0) },
       { label: '取 ¥1,000', disabled: state.bank < 1000, act: () => bankOp(0, 1000) },
       { label: '全部取出', sub: fmt(state.bank), disabled: state.bank <= 0, act: () => bankOp(0, state.bank) },
+      { label: '🚪 返回', sub: '继续摆摊', act: () => {} },
     ].map((o) => ({ label: o.label, sub: o.sub, disabled: o.disabled, onPick: o.act })),
   });
 }
@@ -237,6 +245,7 @@ function openLoan() {
       { label: '借 ¥10,000', onPick: () => loanOp(10000, 0) },
       { label: '还 ¥2,000', disabled: state.loan <= 0 || state.cash < 1, onPick: () => loanOp(0, Math.min(2000, state.loan, state.cash)) },
       { label: '全部还清', sub: fmt(state.loan), disabled: state.loan <= 0 || state.cash < 1, onPick: () => loanOp(0, Math.min(state.loan, state.cash)) },
+      { label: '🚪 返回', sub: '继续摆摊', onPick: () => {} },
     ],
   });
 }
