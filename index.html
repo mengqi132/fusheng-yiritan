@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>浮生一日摊</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="bg-glow bg-glow-a"></div>
+  <div class="bg-glow bg-glow-b"></div>
+
+  <!-- 主页开场画面 -->
+  <div id="landing">
+    <div class="landing-orbs"><span>🍜</span><span>👟</span><span>🎧</span><span>🖥️</span><span>🎁</span></div>
+    <div class="landing-inner">
+      <div class="landing-emoji">🌃</div>
+      <h1 class="landing-title">浮生一日摊</h1>
+      <p class="landing-sub">A Night-Market Trading Game</p>
+      <p class="landing-story">
+        你欠了房东 <b>50,000</b> 元，限期 <b>15</b> 天。<br>
+        带着仅有的 <b>5,000</b> 元本金，你在夜市支起了一个小摊。<br>
+        烤冷面、潮袜、球鞋、显卡——行情每天都在变。<br>
+        低买高卖，提防城管和小偷，要不要找"老王"借钱搏一把？<br>
+        15 天后，你能逆天改命吗？
+      </p>
+      <div class="landing-btns">
+        <button class="btn btn-primary btn-big" id="btn-start">🎮 开始游戏</button>
+        <button class="btn btn-ghost btn-big hidden" id="btn-continue">💾 继续摆摊</button>
+      </div>
+      <p class="landing-foot">软件实训 2027 · 文字经营小游戏 · 进度自动保存在本地</p>
+    </div>
+  </div>
+
+  <div id="app">
+    <!-- 顶部状态栏 -->
+    <header id="topbar">
+      <div class="day-info">
+        <span id="day-label">第 1 天</span>
+        <span class="day-total">/ 15</span>
+      </div>
+      <div class="asset-info">
+        <span class="asset-label">💰 总资产</span>
+        <span id="total-assets" class="asset-value">¥5,000</span>
+      </div>
+    </header>
+
+    <!-- 日期进度条 -->
+    <div id="day-progress" aria-hidden="true"></div>
+
+    <div id="cashbar">
+      <span class="pill">现金 <b id="cash">¥5,000</b></span>
+      <span class="pill">银行 <b id="bank">¥0</b></span>
+      <span class="pill">借款 <b id="loan" class="warn">¥0</b></span>
+      <span class="pill">债务目标 <b id="debt" class="debt">¥50,000</b></span>
+      <span class="pill">背包 <b id="bag-usage">0/20</b></span>
+    </div>
+
+    <main id="panels">
+      <!-- 行情面板 -->
+      <section class="panel" id="market-panel">
+        <h2><span class="h2-icon">📈</span> 今日行情 <small>点击买入</small></h2>
+        <div id="market-list" class="list"></div>
+      </section>
+
+      <!-- 背包面板 -->
+      <section class="panel" id="bag-panel">
+        <h2><span class="h2-icon">🎒</span> 我的背包 <small>点击卖出</small></h2>
+        <div id="bag-list" class="list"></div>
+      </section>
+    </main>
+
+    <!-- 快讯条 -->
+    <div id="news-bar">
+      <span class="news-dot"></span>
+      <span class="news-icon">📰</span>
+      <span id="news-text">你带着 5,000 元本金来到夜市，15 天内要赚到 50,000 元还债。低买高卖，祝你好运。</span>
+    </div>
+
+    <!-- 底部操作栏 -->
+    <footer id="actions">
+      <button class="btn btn-ghost" id="btn-bank">🏦 银行</button>
+      <button class="btn btn-ghost" id="btn-loan">💸 借贷</button>
+      <button class="btn btn-ghost" id="btn-expand">🎒 扩容</button>
+      <button class="btn btn-ghost btn-icon" id="btn-mute" title="音效开关">🔊</button>
+      <button class="btn btn-primary" id="btn-next-day">🌙 收摊</button>
+    </footer>
+  </div>
+
+  <!-- 浮动金额容器 -->
+  <div id="float-layer"></div>
+
+  <!-- 成就提示 -->
+  <div id="toast-layer"></div>
+
+  <!-- 通用弹窗（事件抉择 / 银行 / 借贷 / 扩容） -->
+  <div id="modal-mask" class="mask hidden">
+    <div class="modal" id="modal-box"></div>
+  </div>
+
+  <!-- 结算弹窗 -->
+  <div id="settlement-mask" class="mask hidden">
+    <div class="modal">
+      <div id="settlement-emoji" class="modal-emoji">🏆</div>
+      <h2 id="settlement-title">商业传奇</h2>
+      <p id="settlement-text"></p>
+      <p class="settlement-asset">最终总资产：<b id="final-assets"></b></p>
+      <p id="settlement-best" class="best-line"></p>
+      <div id="settlement-ach"></div>
+      <button class="btn btn-primary" id="btn-restart">🔄 再来一局</button>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
