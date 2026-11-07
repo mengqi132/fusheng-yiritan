@@ -57,7 +57,10 @@ function newGame() {
 }
 
 // ---------- 存档 ----------
+let demoMode = false; // #demo 截图演示模式：不写存档
+
 function save() {
+  if (demoMode) return;
   if (state.over) {
     localStorage.removeItem(SAVE_KEY);
     return;
@@ -450,7 +453,9 @@ window.__fusheng = {
 
 // ---------- 启动：主页开场 ----------
 function hideLanding() {
-  document.querySelector('#landing').classList.add('hide');
+  const l = document.querySelector('#landing');
+  if (demoMode) { l.style.display = 'none'; return; } // 截图演示模式直接隐藏，不走渐变
+  l.classList.add('hide');
 }
 
 function boot() {
@@ -494,6 +499,28 @@ function boot() {
     sfx.day();
     refresh();
   });
+
+  // #play 直接进入游戏；#demo 自动演示几天（用于截图等场景，不写存档）
+  if (location.hash === '#play' || location.hash === '#demo') {
+    localStorage.removeItem(SAVE_KEY);
+    state = newGame();
+    tracker = createTracker();
+    dayStartAssets = START_CASH;
+    demoMode = location.hash === '#demo';
+    hideLanding();
+    refresh();
+    if (demoMode) {
+      for (let i = 0; i < 6; i++) {
+        const buyBtn = document.querySelector('#market-list .btn-mini[data-act="buy"]:not([disabled])');
+        if (buyBtn) buyBtn.click();
+        nextDay();
+        if (isModalOpen()) {
+          const b = [...document.querySelectorAll('#modal-box .opt-btn')].find((x) => !x.disabled);
+          if (b) b.click();
+        }
+      }
+    }
+  }
 }
 
 boot();

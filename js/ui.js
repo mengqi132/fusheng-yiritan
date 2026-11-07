@@ -27,7 +27,7 @@ function sparklineSVG(data, trendCls) {
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
   const color = trendCls === 'up' ? '#FF5A5A' : trendCls === 'down' ? '#3DDC97' : '#8B93A7';
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}">` +
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">` +
     `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" ` +
     `stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/></svg>`;
 }
@@ -86,16 +86,18 @@ function renderMarket(state) {
     row.innerHTML = `
       <span class="g-icon">${g.icon}</span>
       <span class="g-name">${g.name}</span>
-      ${sparklineSVG(state.history?.[g.id], cls)}
       <span class="g-price">${fmt(price)}</span>
       <span class="g-change ${cls}">${arrow} ${Math.abs(chgPct)}%</span>
-      ${heatChip}
-      <span class="ops">
-        <button class="btn-mini" data-act="buy" data-id="${g.id}" data-n="1"
-          ${canBuy(state, g.id, 1) ? '' : 'disabled'}>买1</button>
-        <button class="btn-mini" data-act="buy" data-id="${g.id}" data-n="10"
-          ${canBuy(state, g.id, 10) ? '' : 'disabled'}>买10</button>
-      </span>`;
+      <div class="row-sub">
+        ${sparklineSVG(state.history?.[g.id], cls)}
+        ${heatChip}
+        <span class="ops">
+          <button class="btn-mini" data-act="buy" data-id="${g.id}" data-n="1"
+            ${canBuy(state, g.id, 1) ? '' : 'disabled'}>买1</button>
+          <button class="btn-mini" data-act="buy" data-id="${g.id}" data-n="10"
+            ${canBuy(state, g.id, 10) ? '' : 'disabled'}>买10</button>
+        </span>
+      </div>`;
     list.appendChild(row);
   }
 }

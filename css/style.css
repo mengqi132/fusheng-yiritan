@@ -156,8 +156,9 @@ body {
 /* ---------- 商品行 ---------- */
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid transparent;
   border-radius: 12px;
@@ -181,20 +182,26 @@ body {
   border-radius: 10px;
   flex-shrink: 0;
 }
-.row .g-name { flex: 1; font-size: 14px; min-width: 0; }
-.row .g-name .sub { display: block; font-size: 11px; color: var(--text-1); margin-top: 2px; }
+.row .g-name {
+  flex: 1;
+  font-size: 14px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row .g-name .sub { display: block; font-size: 11px; color: var(--text-1); margin-top: 2px; white-space: normal; }
 
 .row .g-price {
   font-family: var(--mono);
   font-size: 15px;
   font-weight: 600;
-  min-width: 78px;
   text-align: right;
 }
 .row .g-change {
   font-family: var(--mono);
   font-size: 11.5px;
-  min-width: 64px;
+  min-width: 58px;
   text-align: center;
   padding: 3px 6px;
   border-radius: 6px;
@@ -206,18 +213,29 @@ body {
 .down { color: var(--down); }
 .flat { color: var(--text-1); }
 
-.row .ops { display: flex; gap: 6px; }
+/* 商品行第二行：走势线 + 热度 + 操作按钮 */
+.row-sub {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 44px;
+}
+.row-sub .spark { width: 140px; height: 24px; flex-shrink: 0; opacity: 0.9; }
+.row-sub .ops { margin-left: auto; display: flex; gap: 6px; }
+.row > .ops { margin-left: auto; display: flex; gap: 6px; }
 
 .btn-mini {
   font-family: var(--sans);
   font-size: 12px;
-  padding: 5px 10px;
+  padding: 5px 12px;
   border-radius: 8px;
   border: 1px solid var(--panel-border);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-0);
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 }
 .btn-mini:hover:not(:disabled) {
   border-color: var(--accent);
@@ -541,8 +559,15 @@ body {
 #chart-tooltip b { font-family: var(--mono); }
 #chart-tooltip .tt-day { color: var(--text-1); font-size: 11px; }
 
-/* 商品行内迷你走势线 */
+/* 商品行内迷你走势线（默认隐藏，仅在 .row-sub 中启用） */
 .spark { width: 56px; height: 20px; flex-shrink: 0; opacity: 0.9; }
+
+/* 弹窗网格（银行/借贷）的「返回」按钮拉通整行并居中 */
+.op-grid .opt-btn:last-child {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+.op-grid .opt-btn:last-child small { text-align: center; }
 
 /* ---------- 热度徽章 ---------- */
 .g-heat {
@@ -662,16 +687,17 @@ body {
   #cashbar { gap: 6px; }
   .pill { font-size: 12px; padding: 5px 10px; }
 
-  /* 商品行：两行布局，第一行信息、第二行按钮，杜绝竖排文字 */
-  .row { flex-wrap: wrap; row-gap: 8px; padding: 10px; }
+  /* 商品行：两行卡片布局（第一行信息、第二行走势+热度+按钮） */
+  .row { padding: 10px; }
   .row .g-icon { width: 30px; height: 30px; font-size: 17px; }
-  .row .g-name { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row .g-name .sub { white-space: normal; }
-  .spark { display: none; }  /* 手机端用下方大图看走势 */
-  .row .g-price { min-width: 0; font-size: 14px; }
+  .row .g-price { font-size: 14px; }
   .row .g-change { min-width: 0; font-size: 11px; }
-  .row .ops { flex-basis: 100%; display: flex; gap: 8px; }
-  .row .ops .btn-mini { flex: 1; padding: 9px 10px; font-size: 13px; }
+  .row-sub { padding-left: 40px; gap: 8px; }
+  .row-sub .spark { display: none; }  /* 手机端用下方大图看走势 */
+  .row-sub .ops { flex: 1; margin-left: 0; }
+  .row-sub .ops .btn-mini { flex: 1; padding: 9px 10px; font-size: 13px; }
+  .row > .ops { flex-basis: 100%; display: flex; gap: 8px; }
+  .row > .ops .btn-mini { flex: 1; padding: 9px 10px; font-size: 13px; }
 
   /* 快讯条避开底部操作栏 */
   #news-bar { font-size: 12.5px; padding: 11px 13px; margin-bottom: 6px; }

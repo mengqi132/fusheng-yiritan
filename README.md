@@ -6,6 +6,8 @@
 
 **🎮 在线试玩：<https://mengqi132.github.io/fusheng-yiritan/>**
 
+![《浮生一日摊》游戏截图](docs/screenshot.png)
+
 ---
 
 ## 📖 游戏背景

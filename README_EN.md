@@ -6,6 +6,8 @@
 
 **🎮 Play online: <https://mengqi132.github.io/fusheng-yiritan/>**
 
+![One Day Peddler — gameplay screenshot](docs/screenshot.png)
+
 ---
 
 ## 📖 Background
