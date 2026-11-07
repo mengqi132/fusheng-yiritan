@@ -491,6 +491,59 @@ body {
   .landing-orbs span { font-size: 30px; }
 }
 
+/* ---------- 价格走势面板 ---------- */
+.chart-panel { grid-column: 1 / -1; min-height: 0; }
+
+#chart-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.chip {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-1);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover { border-color: var(--accent); color: var(--text-0); }
+.chip.active {
+  border-color: var(--accent);
+  background: rgba(110, 143, 251, 0.18);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(110, 143, 251, 0.25);
+}
+.chip .up, .chip .down, .chip .flat { font-family: var(--mono); font-size: 11px; margin-left: 2px; }
+
+#chart-wrap { position: relative; }
+#price-chart { display: block; width: 100%; height: 220px; }
+
+#chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(20, 24, 35, 0.95);
+  border: 1px solid rgba(110, 143, 251, 0.4);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -100%);
+  z-index: 5;
+}
+#chart-tooltip.hidden { display: none; }
+#chart-tooltip b { font-family: var(--mono); }
+#chart-tooltip .tt-day { color: var(--text-1); font-size: 11px; }
+
+/* 商品行内迷你走势线 */
+.spark { width: 56px; height: 20px; flex-shrink: 0; opacity: 0.9; }
+
 /* ---------- 成就提示 toast ---------- */
 #toast-layer {
   position: fixed;

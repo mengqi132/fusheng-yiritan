@@ -45,6 +45,7 @@ function newGame() {
     tip: null,
     streaks: {},        // 各商品连跌天数（连跌保护用）
     recentEvents: [],   // 最近触发的事件 id（防重复）
+    history: {},        // 各商品每日价格历史（走势图用）
     flash: null,
     over: false,
   };
@@ -338,6 +339,11 @@ function settle() {
 
 // ---------- 事件绑定 ----------
 function refresh() {
+  // 记录当日价格历史（走势图与迷你走势线用），幂等可重复
+  if (!state.history) state.history = {};
+  for (const g of GOODS) {
+    (state.history[g.id] = state.history[g.id] || [])[state.day - 1] = state.prices[g.id];
+  }
   render(state);
   checkPassive();
   save();

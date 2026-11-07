@@ -12,6 +12,24 @@ export function render(state) {
   renderTopbar(state);
   renderMarket(state);
   renderBag(state);
+  renderChart(state);
+}
+
+// ---------- 迷你走势线（SVG sparkline）----------
+function sparklineSVG(data, trendCls) {
+  if (!data || data.length < 2) return '<svg class="spark"></svg>';
+  const w = 56, h = 20;
+  const min = Math.min(...data), max = Math.max(...data);
+  const span = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * (w - 4) + 2;
+    const y = h - 3 - ((v - min) / span) * (h - 6);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const color = trendCls === 'up' ? '#FF5A5A' : trendCls === 'down' ? '#3DDC97' : '#8B93A7';
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}">` +
+    `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" ` +
+    `stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/></svg>`;
 }
 
 function renderTopbar(state) {
@@ -62,6 +80,7 @@ function renderMarket(state) {
     row.innerHTML = `
       <span class="g-icon">${g.icon}</span>
       <span class="g-name">${g.name}</span>
+      ${sparklineSVG(state.history?.[g.id], cls)}
       <span class="g-price">${fmt(price)}</span>
       <span class="g-change ${cls}">${arrow} ${Math.abs(chgPct)}%</span>
       <span class="ops">
@@ -216,4 +235,208 @@ export function bagCount(state) {
 
 function canBuy(state, id, n) {
   return state.cash >= state.prices[id] * n && bagCount(state) + n <= state.capacity;
+}
+
+// ---------- 价格走势大图（Canvas） ----------
+let chartSel = 'gpu';
+let chartHover = -1;
+let chartBound = false;
+let lastState = null;
+
+export function renderChart(state) {
+  lastState = state;
+  const g0 = GOODS.find((g) => g.id === chartSel) || GOODS[0];
+  $('#chart-sub').textContent = `${g0.icon} ${g0.name} · 近 ${Math.max((state.history?.[chartSel] || []).length, 1)} 天`;
+
+  // 商品切换标签
+  const tabs = $('#chart-tabs');
+  tabs.innerHTML = '';
+  for (const g of GOODS) {
+    const chg = state.changes[g.id] ?? 0;
+    const cls = chg > 0.001 ? 'up' : chg < -0.001 ? 'down' : 'flat';
+    const arrow = chg > 0.001 ? '▲' : chg < -0.001 ? '▼' : '·';
+    const b = document.createElement('button');
+    b.className = 'chip' + (g.id === chartSel ? ' active' : '');
+    b.innerHTML = `${g.icon} ${g.name} <span class="${cls}">${arrow}</span>`;
+    b.addEventListener('click', () => { chartSel = g.id; chartHover = -1; renderChart(lastState); });
+    tabs.appendChild(b);
+  }
+
+  bindChartHover();
+  drawChart(state);
+}
+
+function bindChartHover() {
+  if (chartBound) return;
+  chartBound = true;
+  const canvas = document.querySelector('#price-chart');
+  canvas.addEventListener('mousemove', (e) => {
+    if (!lastState) return;
+    const data = lastState.history?.[chartSel] || [];
+    if (data.length < 2) return;
+    const rect = canvas.getBoundingClientRect();
+    const m = chartMetrics(rect.width, data.length);
+    const i = Math.round((e.clientX - rect.left - m.padL) / m.stepX);
+    chartHover = Math.max(0, Math.min(data.length - 1, i));
+    drawChart(lastState);
+  });
+  canvas.addEventListener('mouseleave', () => {
+    chartHover = -1;
+    document.querySelector('#chart-tooltip').classList.add('hidden');
+    if (lastState) drawChart(lastState);
+  });
+  window.addEventListener('resize', () => { if (lastState) drawChart(lastState); });
+}
+
+function chartMetrics(width, len) {
+  const padL = 58, padR = 66, padT = 20, padB = 28;
+  const stepX = len > 1 ? (width - padL - padR) / (len - 1) : 0;
+  return { padL, padR, padT, padB, stepX };
+}
+
+function drawChart(state) {
+  const canvas = $('#price-chart');
+  if (!canvas) return;
+  const g = GOODS.find((x) => x.id === chartSel);
+  const data = (state.history && state.history[chartSel]) || [];
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.parentElement.clientWidth;
+  const h = 220;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const { padL, padR, padT, padB } = chartMetrics(w, data.length);
+  if (data.length === 0) return;
+
+  // 纵轴范围（上下留 15% 缓冲）
+  const min = Math.min(...data), max = Math.max(...data);
+  const pad = (max - min || 1) * 0.15;
+  const lo = min - pad, hi = max + pad;
+  const X = (i) => data.length > 1 ? padL + (w - padL - padR) * (i / (data.length - 1)) : (padL + w - padR) / 2;
+  const Y = (v) => padT + (h - padT - padB) * (1 - (v - lo) / (hi - lo));
+
+  // 趋势色：红涨绿跌
+  const up = data[data.length - 1] >= data[0];
+  const cMain = up ? '#FF5A5A' : '#3DDC97';
+
+  // 网格线 + 价格刻度
+  ctx.font = '11px Consolas, monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + (hi - lo) * (i / 4);
+    const y = Y(v);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.stroke();
+    ctx.fillStyle = '#8B93A7';
+    ctx.fillText('¥' + Math.round(v).toLocaleString('zh-CN'), padL - 8, y);
+  }
+
+  // 横轴：第 N 天
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let i = 0; i < data.length; i++) {
+    if (data.length > 8 && i % 2 !== 0 && i !== data.length - 1) continue;
+    ctx.fillStyle = i === data.length - 1 ? '#F5C97B' : '#8B93A7';
+    ctx.fillText(`第${i + 1}天`, X(i), h - padB + 8);
+  }
+
+  if (data.length < 2) {
+    // 第一天只有一个点
+    ctx.fillStyle = cMain;
+    ctx.beginPath();
+    ctx.arc(X(0), Y(data[0]), 4, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+
+  // 面积渐变填充
+  const rgb = up ? '255,90,90' : '61,220,151';
+  const grad2 = ctx.createLinearGradient(0, padT, 0, h - padB);
+  grad2.addColorStop(0, `rgba(${rgb},0.28)`);
+  grad2.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.beginPath();
+  ctx.moveTo(X(0), Y(data[0]));
+  for (let i = 1; i < data.length; i++) ctx.lineTo(X(i), Y(data[i]));
+  ctx.lineTo(X(data.length - 1), h - padB);
+  ctx.lineTo(X(0), h - padB);
+  ctx.closePath();
+  ctx.fillStyle = grad2;
+  ctx.fill();
+
+  // 折线（渐变描边）
+  const lineGrad = ctx.createLinearGradient(padL, 0, w - padR, 0);
+  lineGrad.addColorStop(0, up ? '#B03A4A' : '#2A8F68');
+  lineGrad.addColorStop(1, cMain);
+  ctx.beginPath();
+  ctx.moveTo(X(0), Y(data[0]));
+  for (let i = 1; i < data.length; i++) ctx.lineTo(X(i), Y(data[i]));
+  ctx.strokeStyle = lineGrad;
+  ctx.lineWidth = 2.4;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // 数据点
+  for (let i = 0; i < data.length; i++) {
+    ctx.fillStyle = i === data.length - 1 ? '#F5C97B' : 'rgba(232,234,240,0.7)';
+    ctx.beginPath();
+    ctx.arc(X(i), Y(data[i]), i === data.length - 1 ? 4.5 : 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 末端光点 + 当前价标签
+  const lx = X(data.length - 1), ly = Y(data[data.length - 1]);
+  ctx.shadowColor = 'rgba(245,201,123,0.9)';
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = '#F5C97B';
+  ctx.beginPath();
+  ctx.arc(lx, ly, 4.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.font = 'bold 13px Consolas, monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#F5C97B';
+  ctx.fillText(fmt(data[data.length - 1]), lx + 10, ly);
+
+  // 悬浮十字线 + tooltip
+  if (chartHover >= 0 && chartHover < data.length) {
+    const hx = X(chartHover), hy = Y(data[chartHover]);
+    ctx.strokeStyle = 'rgba(110,143,251,0.45)';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(hx, padT);
+    ctx.lineTo(hx, h - padB);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = cMain;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const tip = $('#chart-tooltip');
+    const prev = chartHover > 0 ? data[chartHover - 1] : null;
+    const chgTxt = prev == null ? '首日' :
+      ((data[chartHover] - prev) / prev * 100).toFixed(1) + '%';
+    const chgCls = prev == null ? '' : (data[chartHover] >= prev ? 'up' : 'down');
+    const chgSign = prev != null && data[chartHover] >= prev ? '+' : '';
+    tip.innerHTML = `<span class="tt-day">第 ${chartHover + 1} 天</span><br>` +
+      `<b>${fmt(data[chartHover])}</b> ` +
+      (prev == null ? '' : `<b class="${chgCls}">${chgSign}${chgTxt}</b>`);
+    tip.classList.remove('hidden');
+    tip.style.left = hx + 'px';
+    tip.style.top = (hy - 12) + 'px';
+  }
 }
