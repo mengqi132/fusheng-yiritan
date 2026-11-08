@@ -137,6 +137,12 @@ function nextDay() {
   state.day += 1;
   state.borrowedToday = 0; // 每日借款额度重置
 
+  // 还款日：老王强制上门收账（在当日利息结算前）
+  const repayNews = [];
+  if (REPAY_DAYS.includes(state.day) && state.loan > 0) {
+    repayNews.push(forcedRepay());
+  }
+
   if (state.loan > 0) {
     state.loan = Math.round(state.loan * (1 + LOAN_DAILY_RATE));
   }
@@ -147,7 +153,12 @@ function nextDay() {
   state.changes = changes;
   state.streaks = streaks;
   state.heats = heats;
-  const parts = news.map((n) => n.text);
+  const parts = repayNews.concat(news.map((n) => n.text));
+
+  // 还款日前一天提醒
+  if (state.day === 5 || state.day === 9) {
+    parts.push('⚠️ 提醒：明天是老王的还款日，他会来收走全部欠款，记得留够现金！');
+  }
 
   // 内幕消息应验（神秘人事件）
   if (state.tip) {
@@ -275,17 +286,77 @@ function bankOp(deposit, withdraw) {
 }
 
 // ---------- 借贷 ----------
-const LOAN_DAILY_LIMIT = 10000; // 每日借款上限
-// 规则：① 每天累计最多借 ¥10,000；② 有未还欠款时必须先还清才能再借
+// 规则：① 第 1~5 天每天最多借 ¥10,000，第 6 天起每天最多 ¥20,000
+//       ② 有未还欠款时必须先还清才能再借
+//       ③ 第 6、10 天是强制还款日，老王上门收账（现金→存款→变卖存货）
+const REPAY_DAYS = [6, 10];
+
+function dailyLimit(day) {
+  return day <= 5 ? 10000 : 20000;
+}
+
+// 还款日强制收账，返回快讯文案
+function forcedRepay() {
+  let collected = 0;
+
+  // 先扣现金
+  const fromCash = Math.min(state.cash, state.loan);
+  state.cash -= fromCash;
+  state.loan -= fromCash;
+  collected += fromCash;
+
+  // 再扣存款
+  if (state.loan > 0 && state.bank > 0) {
+    const fromBank = Math.min(state.bank, state.loan);
+    state.bank -= fromBank;
+    state.loan -= fromBank;
+    collected += fromBank;
+  }
+
+  // 还不够就变卖存货（按市值从大到小）
+  let soldNote = '';
+  if (state.loan > 0) {
+    const held = Object.keys(state.bag)
+      .filter((id) => state.bag[id].count > 0)
+      .sort((a, b) => state.bag[b.id].count * state.prices[b.id] - state.bag[a.id].count * state.prices[a.id]);
+    for (const id of held) {
+      if (state.loan <= 0) break;
+      const item = state.bag[id];
+      const g = GOODS.find((x) => x.id === id);
+      const avgCost = item.totalCost / item.count;
+      let soldCount = 0;
+      while (item.count > 0 && state.loan > 0) {
+        item.count -= 1;
+        item.totalCost -= avgCost;
+        const gain = state.prices[id];
+        collected += gain;
+        const pay = Math.min(gain, state.loan);
+        state.loan -= pay;
+        state.cash += gain - pay;
+        soldCount += 1;
+      }
+      if (soldCount > 0) soldNote += `${g.icon}${g.name}×${soldCount} `;
+    }
+  }
+
+  if (state.loan <= 0) {
+    return soldNote
+      ? `💸 还款日！老王上门收账，你现金不够，被迫变卖了 ${soldNote.trim()} 抵债，总算还清了 ${fmt(collected)}。`
+      : `💸 还款日！老王上门收走了 ${fmt(collected)}，两清了。`;
+  }
+  // 砸锅卖铁也还不清：剩余债务加 10% 罚息
+  state.loan = Math.round(state.loan * 1.1);
+  return `💸 还款日！你砸锅卖铁只凑出 ${fmt(collected)}，老王黑着脸把剩下的债加了 10% 罚息……`;
+}
 
 function openLoan() {
   const hasDebt = state.loan > 0;
-  const quotaLeft = LOAN_DAILY_LIMIT - state.borrowedToday;
+  const limit = dailyLimit(state.day);
+  const quotaLeft = limit - state.borrowedToday;
 
-  // 借款按钮的禁用原因说明
   function borrowBlockReason(amount) {
     if (hasDebt) return '需先还清欠款才能再借';
-    if (quotaLeft < amount) return `今日额度不足（剩 ${fmt(quotaLeft)}）`;
+    if (quotaLeft < amount) return `今日额度不足（剩 ${fmt(Math.max(quotaLeft, 0))}）`;
     return null;
   }
 
@@ -299,12 +370,13 @@ function openLoan() {
     };
   };
 
+  const repaySoon = state.day === 5 || state.day === 9;
   openModal({
     icon: '💸',
     title: '老王的借贷',
-    desc: `日息 5%，收摊时自动复利。老王立了规矩：<b>每天最多借 ${fmt(LOAN_DAILY_LIMIT)}</b>，且<b>旧账不清、新账免谈</b>。<br>
-      <span class="balance-line">当前欠款 ${fmt(state.loan)} · 今日已借 ${fmt(state.borrowedToday)} / ${fmt(LOAN_DAILY_LIMIT)}</span><br>
-      <span class="balance-line">现金 ${fmt(state.cash)}</span>`,
+    desc: `日息 5%，收摊时自动复利。老王的规矩：<b>第 1~5 天日限 ¥10,000，第 6 天起日限 ¥20,000</b>；旧账不清、新账免谈。<b>第 6、10 天是还款日</b>，他会上门收账（现金不够就动存款和存货）。<br>
+      <span class="balance-line">当前欠款 ${fmt(state.loan)} · 今日已借 ${fmt(state.borrowedToday)} / ${fmt(limit)}</span><br>
+      <span class="balance-line">现金 ${fmt(state.cash)}${repaySoon ? ' · <b style="color:var(--up)">⚠️ 明天是还款日</b>' : ''}</span>`,
     grid: true,
     options: [
       borrowBtn(2000),
@@ -318,14 +390,15 @@ function openLoan() {
 
 function loanOp(borrow, repay) {
   if (borrow > 0) {
+    const limit = dailyLimit(state.day);
     // 硬性限制：有欠款不可再借；每日累计不超上限
     if (state.loan > 0) {
       showNews('💸 老王摆摆手："旧账还没清呢，新账免谈。"');
       refresh();
       return;
     }
-    if (state.borrowedToday + borrow > LOAN_DAILY_LIMIT) {
-      showNews(`💸 今天的借款额度不够了（上限 ${fmt(LOAN_DAILY_LIMIT)}，已借 ${fmt(state.borrowedToday)}）。`);
+    if (state.borrowedToday + borrow > limit) {
+      showNews(`💸 今天的借款额度不够了（上限 ${fmt(limit)}，已借 ${fmt(state.borrowedToday)}）。`);
       refresh();
       return;
     }

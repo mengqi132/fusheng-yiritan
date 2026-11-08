@@ -35,7 +35,7 @@ Grow your total assets to **¥50,000+** within 15 days to pay off the debt. The 
 - **📰 Intel Agency**: Pay for certainty about tomorrow — Street Rumor (¥300, 50% reliable) / Wholesale Insider (¥1,000, 70%) / Core Tip-off (¥3,000, 90%). One purchase per day; truth revealed the next evening
 - **🌙 Close Stall**: End the day; prices fluctuate overnight
 - **🏦 Bank**: Deposits are safe from thieves and fines (but earn no interest)
-- **💸 Loan**: Borrow from "Lao Wang" at 5% daily compound interest. His rules: max ¥10,000 per day, and no new loan until the old one is repaid — leverage is a single bullet for the right moment, not a money printer
+- **💸 Loan**: Borrow from "Lao Wang" at 5% daily compound interest. His rules: daily limit ¥10,000 on days 1–5, then ¥20,000 from day 6; no new loan until the old one is repaid; days 6 and 10 are mandatory repayment days — he collects in person (cash first, then your savings and inventory)
 - **🎒 Expand**: Pay to enlarge your bag (20 → 40 → 70 → 100 slots)
 - **🎲 Random Events**: Inspectors' fines, pickpockets, influencer shout-outs, midnight wholesale deals, an insider tip seller... 55% chance per day, no repeats within two days, and some events ask you to make a choice
 - **🏅 Achievements**: 9 hidden achievements to unlock
