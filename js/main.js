@@ -50,6 +50,7 @@ function newGame() {
     heats: initHeats(), // 各商品市场热度 0~100
     intel: null,        // 已购买的付费情报
     intelDay: 0,        // 买情报那天（每天限购一次）
+    borrowedToday: 0,   // 今日已借款金额（每日上限 ¥10,000）
     forecast: rollForecast(), // 夜市新闻联播：明日预告
     flash: null,
     over: false,
@@ -134,6 +135,7 @@ function nextDay() {
   }
 
   state.day += 1;
+  state.borrowedToday = 0; // 每日借款额度重置
 
   if (state.loan > 0) {
     state.loan = Math.round(state.loan * (1 + LOAN_DAILY_RATE));
@@ -273,18 +275,42 @@ function bankOp(deposit, withdraw) {
 }
 
 // ---------- 借贷 ----------
+const LOAN_DAILY_LIMIT = 10000; // 每日借款上限
+// 规则：① 每天累计最多借 ¥10,000；② 有未还欠款时必须先还清才能再借
+
 function openLoan() {
+  const hasDebt = state.loan > 0;
+  const quotaLeft = LOAN_DAILY_LIMIT - state.borrowedToday;
+
+  // 借款按钮的禁用原因说明
+  function borrowBlockReason(amount) {
+    if (hasDebt) return '需先还清欠款才能再借';
+    if (quotaLeft < amount) return `今日额度不足（剩 ${fmt(quotaLeft)}）`;
+    return null;
+  }
+
+  const borrowBtn = (amount) => {
+    const reason = borrowBlockReason(amount);
+    return {
+      label: `借 ${fmt(amount)}`,
+      sub: reason || '日息 5%，随时可还',
+      disabled: !!reason,
+      onPick: () => loanOp(amount, 0),
+    };
+  };
+
   openModal({
     icon: '💸',
     title: '老王的借贷',
-    desc: `日息 5%，收摊时自动复利，随时可以还。高手用它撬动本金，新手被它拖入深渊。<br>
-      <span class="balance-line">当前借款 ${fmt(state.loan)} · 现金 ${fmt(state.cash)}</span>`,
+    desc: `日息 5%，收摊时自动复利。老王立了规矩：<b>每天最多借 ${fmt(LOAN_DAILY_LIMIT)}</b>，且<b>旧账不清、新账免谈</b>。<br>
+      <span class="balance-line">当前欠款 ${fmt(state.loan)} · 今日已借 ${fmt(state.borrowedToday)} / ${fmt(LOAN_DAILY_LIMIT)}</span><br>
+      <span class="balance-line">现金 ${fmt(state.cash)}</span>`,
     grid: true,
     options: [
-      { label: '借 ¥2,000', onPick: () => loanOp(2000, 0) },
-      { label: '借 ¥10,000', onPick: () => loanOp(10000, 0) },
-      { label: '还 ¥2,000', disabled: state.loan <= 0 || state.cash < 1, onPick: () => loanOp(0, Math.min(2000, state.loan, state.cash)) },
-      { label: '全部还清', sub: fmt(state.loan), disabled: state.loan <= 0 || state.cash < 1, onPick: () => loanOp(0, Math.min(state.loan, state.cash)) },
+      borrowBtn(2000),
+      borrowBtn(10000),
+      { label: '还 ¥2,000', sub: hasDebt ? `欠款 ${fmt(state.loan)}` : '当前无欠款', disabled: !hasDebt || state.cash < 1, onPick: () => loanOp(0, Math.min(2000, state.loan, state.cash)) },
+      { label: '全部还清', sub: hasDebt ? fmt(state.loan) : '当前无欠款', disabled: !hasDebt || state.cash < 1, onPick: () => loanOp(0, Math.min(state.loan, state.cash)) },
       { label: '🚪 返回', sub: '继续摆摊', onPick: () => {} },
     ],
   });
@@ -292,8 +318,20 @@ function openLoan() {
 
 function loanOp(borrow, repay) {
   if (borrow > 0) {
+    // 硬性限制：有欠款不可再借；每日累计不超上限
+    if (state.loan > 0) {
+      showNews('💸 老王摆摆手："旧账还没清呢，新账免谈。"');
+      refresh();
+      return;
+    }
+    if (state.borrowedToday + borrow > LOAN_DAILY_LIMIT) {
+      showNews(`💸 今天的借款额度不够了（上限 ${fmt(LOAN_DAILY_LIMIT)}，已借 ${fmt(state.borrowedToday)}）。`);
+      refresh();
+      return;
+    }
     state.loan += borrow;
     state.cash += borrow;
+    state.borrowedToday += borrow;
     tracker.onBorrow();
     spawnFloat(`+${fmt(borrow)}`, 'gain');
     showNews(`💸 你向老王借了 ${fmt(borrow)}。老王笑眯眯地说："不着急还，慢慢来。"`);
@@ -481,6 +519,7 @@ function boot() {
       if (!state.forecast) state.forecast = rollForecast();
       if (state.intel === undefined) state.intel = null;
       if (!state.intelDay) state.intelDay = 0;
+      if (state.borrowedToday === undefined) state.borrowedToday = 0;
       tracker = createTracker(savedData.ach);
       dayStartAssets = savedData.dayStartAssets ?? totalAssets(state);
       hideLanding();
